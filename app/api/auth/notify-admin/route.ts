@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'nowkwons@naver.com'
 
 export async function POST(req: Request) {
   const { company_name, manager_name, email, role, company_type, is_gmp_certified } = await req.json()
 
+  const resend = new Resend(process.env.RESEND_API_KEY)
   await resend.emails.send({
     from: 'ADM Platform <onboarding@resend.dev>',
     to: ADMIN_EMAIL,
