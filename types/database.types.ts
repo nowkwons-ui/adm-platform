@@ -43,12 +43,12 @@ export interface Database {
         Update: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>
       }
     }
-    Views: Record<string, never>
-    Functions: Record<string, never>
+    Views: Record<never, never>
+    Functions: Record<never, never>
     Enums: {
       user_role: UserRole
       product_status: ProductStatus
     }
-    CompositeTypes: Record<string, never>
+    CompositeTypes: Record<never, never>
   }
 }
