@@ -90,7 +90,8 @@ export default async function ApisPage({ searchParams }: { searchParams: Promise
               </tr>
             ) : (
               products.map((p) => {
-                const profile = p.profiles as { company_name: string | null } | null
+                const profileRaw = p.profiles as unknown
+                const profile = (Array.isArray(profileRaw) ? profileRaw[0] ?? null : profileRaw) as { company_name: string | null } | null
                 return (
                   <tr key={p.id} className="hover:bg-blue-50 transition-colors cursor-pointer group">
                     <td className="px-5 py-4 font-semibold text-blue-700 whitespace-nowrap group-hover:underline">

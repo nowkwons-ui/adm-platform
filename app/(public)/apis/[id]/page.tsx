@@ -21,7 +21,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   if (!product) notFound()
 
-  const profile = product.profiles as { company_name: string | null; manager_name: string | null } | null
+  const profileRaw = product.profiles as unknown
+  const profile = (Array.isArray(profileRaw) ? profileRaw[0] ?? null : profileRaw) as { company_name: string | null; manager_name: string | null } | null
   const supplierName = product.supplier_name || profile?.company_name || '–'
 
   return (
