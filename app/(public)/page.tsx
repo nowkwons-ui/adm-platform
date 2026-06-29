@@ -1,31 +1,55 @@
 import Link from 'next/link'
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 export default async function HomePage() {
-  const supabase = await createServerClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 
-  const { count: apiCount } = await supabase
-    .from('apis')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_available', true)
-
-  const { count: companyCount } = await supabase
-    .from('companies')
-    .select('*', { count: 'exact', head: true })
+  const [{ count: apiCount }, { count: companyCount }] = await Promise.all([
+    supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'APPROVED'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'SELLER').eq('account_status', 'APPROVED'),
+  ])
 
   return (
     <div className="flex flex-col">
       {/* Hero */}
-      <section className="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white py-24 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-blue-300 text-sm font-semibold tracking-widest uppercase mb-4">
+      <section className="relative text-white overflow-hidden" style={{ minHeight: '600px' }}>
+        {/* 배경 이미지 — 전체 표시 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/kukjeon.jpg"
+          alt="국전약품 건물"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+        />
+        {/* 가벼운 그라데이션 오버레이 — 하단 텍스트 가독성용 */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%)',
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 10 }} className="max-w-4xl mx-auto text-center w-full px-4 py-28">
+          <p className="text-blue-200 text-sm font-semibold tracking-widest uppercase mb-4"
+             style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
             API Digital Marketplace
           </p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight"
+              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.7)' }}>
             원료의약품(API) 및<br />
             <span className="text-blue-300">허가 데이터</span> 전문 중개 플랫폼
           </h1>
-          <p className="text-blue-200 text-lg mb-10 max-w-2xl mx-auto">
+          <p className="text-gray-200 text-lg mb-10 max-w-2xl mx-auto"
+             style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
             완제사와 원료사를 연결합니다. DMF, CTD, 분석법 밸리데이션 자료를 안전하게 검색하고 거래하세요.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -37,7 +61,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href="/register"
-              className="border border-white/40 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-white/10 transition-colors"
+              className="border border-white/60 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-white/10 transition-colors"
             >
               공급사 등록
             </Link>

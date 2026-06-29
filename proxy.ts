@@ -22,15 +22,36 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+  const { pathname } = request.nextUrl
 
   // 대시보드는 로그인 필수
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!user && pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  if (user) {
+    const accountStatus = user.app_metadata?.account_status as string | undefined
+    const role = user.app_metadata?.role as string | undefined
+
+    // 반려 계정은 /account-rejected 로
+    if (accountStatus === 'REJECTED' && pathname !== '/account-rejected') {
+      return NextResponse.redirect(new URL('/account-rejected', request.url))
+    }
+
+    // 승인 대기 계정(일반 유저)은 대시보드 접근 차단 → /register/pending 으로
+    if (accountStatus === 'PENDING' && role !== 'ADMIN' && pathname.startsWith('/dashboard')) {
+      return NextResponse.redirect(new URL('/register/pending', request.url))
+    }
+
+    // 로그인 상태에서 /login, /register 접근 시 홈으로
+    if (pathname === '/login' || pathname === '/register') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
   }
 
   return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/inquiries', '/api/data-room/:path*'],
+  matcher: ['/dashboard/:path*', '/login', '/register', '/account-rejected'],
 }
