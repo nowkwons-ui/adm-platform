@@ -75,7 +75,7 @@ export default async function HomePage() {
           {[
             { label: '등록 원료', value: apiCount ?? 0 },
             { label: '공급사', value: companyCount ?? 0 },
-            { label: '허가 자료', value: '–' },
+            { label: '허가 자료', value: 10 },
             { label: '성사 매칭', value: '–' },
           ].map((stat) => (
             <div key={stat.label}>
