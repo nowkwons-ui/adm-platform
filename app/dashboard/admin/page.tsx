@@ -4,7 +4,41 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Tab = 'members' | 'manage' | 'products'
+type Tab = 'members' | 'manage' | 'products' | 'licenses'
+
+interface LicenseDoc {
+  id: number
+  title: string
+  type: string
+  standard: string
+  equipment: string
+  pages: number
+  price: number
+  verified: boolean
+  isNew: boolean
+  tags: string[]
+  submittedBy?: string
+  submittedAt: string
+}
+
+const DUMMY_LICENSES: LicenseDoc[] = [
+  { id: 1, title: '발사르탄 니트로사민 유전독성 불순물 MV 보고서', type: 'MV', standard: 'MFDS', equipment: 'HPLC', pages: 45, price: 3000000, verified: true, isNew: false, tags: ['니트로사민', 'NDMA'], submittedBy: '국전약품', submittedAt: '2026-06-20' },
+  { id: 2, title: '메트포르민 CTD 모듈 3 완성본 (ICH Q3A 기반)', type: 'CTD', standard: 'MFDS', equipment: 'LC-MS/MS', pages: 120, price: 5500000, verified: true, isNew: false, tags: ['CTD', 'ICH Q3A'], submittedBy: 'sb제약', submittedAt: '2026-06-22' },
+  { id: 3, title: '고성능 UV 흡광도 별규시험법 SOP 표준 양식', type: 'SOP', standard: 'USP', equipment: 'UV-Vis', pages: 18, price: 480000, verified: false, isNew: true, tags: ['SOP', '별규시험법'], submittedBy: '권팜', submittedAt: '2026-07-01' },
+  { id: 4, title: '세파클러 용출 시험법 밸리데이션 프로토콜', type: 'Protocol', standard: 'EP', equipment: 'HPLC', pages: 32, price: 1200000, verified: false, isNew: true, tags: ['용출시험', '밸리데이션'], submittedBy: '권팜', submittedAt: '2026-07-05' },
+  { id: 5, title: '아토르바스타틴 CV 적격성 평가 보고서 (IQ/OQ/PQ)', type: 'CV', standard: 'MFDS', equipment: 'HPLC', pages: 67, price: 2200000, verified: true, isNew: false, tags: ['CV', '적격성평가'], submittedBy: '국전약품', submittedAt: '2026-06-25' },
+  { id: 6, title: '아목시실린 원료 CTD Module 2 품질총괄보고서', type: 'CTD', standard: 'MFDS', equipment: 'GC', pages: 88, price: 4000000, verified: false, isNew: true, tags: ['CTD', '항생제'], submittedBy: 'sb제약', submittedAt: '2026-07-08' },
+  { id: 7, title: 'GC-Headspace 잔류용매 시험법 MV 완성 패키지', type: 'MV', standard: 'USP', equipment: 'GC', pages: 53, price: 1800000, verified: true, isNew: false, tags: ['잔류용매', 'ICH Q3C'], submittedBy: '권팜', submittedAt: '2026-06-18' },
+  { id: 8, title: '니트로사민류 위험평가 SOP 및 체크리스트', type: 'SOP', standard: 'MFDS', equipment: 'LC-MS/MS', pages: 24, price: 650000, verified: false, isNew: true, tags: ['니트로사민', '위험평가'], submittedBy: '국전약품', submittedAt: '2026-07-10' },
+]
+
+const LICENSE_TYPE_COLORS: Record<string, string> = {
+  MV: 'bg-blue-100 text-blue-700',
+  CTD: 'bg-purple-100 text-purple-700',
+  CV: 'bg-teal-100 text-teal-700',
+  SOP: 'bg-orange-100 text-orange-700',
+  Protocol: 'bg-green-100 text-green-700',
+}
 
 interface Member {
   id: string
@@ -62,6 +96,29 @@ export default function AdminDashboardPage() {
   const [productSearch, setProductSearch] = useState('')
   const [productStatusFilter, setProductStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL')
   const [productDetail, setProductDetail] = useState<Product | null>(null)
+
+  // 허가자료 탭
+  const [licenses, setLicenses] = useState<LicenseDoc[]>(DUMMY_LICENSES)
+  const [licenseSearch, setLicenseSearch] = useState('')
+  const [licenseFilter, setLicenseFilter] = useState<'ALL' | 'PENDING' | 'VERIFIED'>('ALL')
+  const [licenseDetail, setLicenseDetail] = useState<LicenseDoc | null>(null)
+
+  const toggleLicenseVerify = (id: number) => {
+    setLicenses(prev => prev.map(d => d.id === id ? { ...d, verified: !d.verified } : d))
+    setLicenseDetail(prev => prev?.id === id ? { ...prev, verified: !prev.verified } : prev)
+  }
+  const deleteL = (id: number) => {
+    setLicenses(prev => prev.filter(d => d.id !== id))
+    setLicenseDetail(null)
+  }
+
+  const filteredLicenses = licenses.filter(d => {
+    if (licenseFilter === 'PENDING' && d.verified) return false
+    if (licenseFilter === 'VERIFIED' && !d.verified) return false
+    const q = licenseSearch.toLowerCase()
+    return !q || d.title.toLowerCase().includes(q) || d.type.toLowerCase().includes(q) || (d.submittedBy ?? '').toLowerCase().includes(q)
+  })
+  const pendingLicenses = licenses.filter(d => !d.verified)
 
   const checkAdmin = useCallback(async () => {
     const supabase = createClient()
@@ -354,6 +411,11 @@ export default function AdminDashboardPage() {
             원료 관리
             {pendingProducts.length > 0 && <span className="ml-2 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendingProducts.length}</span>}
           </button>
+          <button onClick={() => setTab('licenses')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${tab === 'licenses' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            허가자료
+            {pendingLicenses.length > 0 && <span className="ml-2 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendingLicenses.length}</span>}
+          </button>
         </div>
 
         {/* ── 계정 승인 탭 ── */}
@@ -550,6 +612,148 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         )}
+        {/* ── 허가자료 탭 ── */}
+        {tab === 'licenses' && (
+          <div className="space-y-4">
+
+            {/* 허가자료 상세 모달 */}
+            {licenseDetail && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-bold text-gray-900 text-lg">허가자료 상세</h3>
+                    <button onClick={() => setLicenseDetail(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${LICENSE_TYPE_COLORS[licenseDetail.type] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {licenseDetail.type}
+                    </span>
+                    {licenseDetail.verified
+                      ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-600 text-white">✓ 검증완료</span>
+                      : <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-orange-600">검증 대기</span>
+                    }
+                    {licenseDetail.isNew && <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-500 text-white">NEW</span>}
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-400 mb-0.5">문서 제목</p>
+                      <p className="font-semibold text-gray-900">{licenseDetail.title}</p>
+                    </div>
+                    {[
+                      { label: '적용 기준', value: licenseDetail.standard },
+                      { label: '적용 장비', value: licenseDetail.equipment },
+                      { label: '페이지 수', value: `${licenseDetail.pages}p` },
+                      { label: '가격', value: `₩ ${licenseDetail.price.toLocaleString()}` },
+                      { label: '등록자', value: licenseDetail.submittedBy ?? '-' },
+                      { label: '등록일', value: licenseDetail.submittedAt },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+                        <p className="font-medium text-gray-800 text-sm">{value}</p>
+                      </div>
+                    ))}
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-400 mb-1">태그</p>
+                      <div className="flex flex-wrap gap-1">
+                        {licenseDetail.tags.map(t => (
+                          <span key={t} className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">#{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </dl>
+
+                  <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
+                    <button onClick={() => deleteL(licenseDetail.id)}
+                      className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-red-50 hover:text-red-500 font-medium">
+                      삭제
+                    </button>
+                    <button onClick={() => toggleLicenseVerify(licenseDetail.id)}
+                      className={`px-5 py-2 text-sm rounded-lg font-semibold transition-colors ${licenseDetail.verified ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                      {licenseDetail.verified ? '검증 취소' : '검증 완료 처리'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 검색 + 필터 */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input type="text" value={licenseSearch} onChange={e => setLicenseSearch(e.target.value)}
+                placeholder="문서명, 유형, 등록자 검색..."
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                {(['ALL', 'PENDING', 'VERIFIED'] as const).map(f => (
+                  <button key={f} onClick={() => setLicenseFilter(f)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${licenseFilter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    {f === 'ALL' ? `전체 (${licenses.length})` : f === 'PENDING' ? `대기 (${pendingLicenses.length})` : `검증완료 (${licenses.filter(d => d.verified).length})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 테이블 */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {filteredLicenses.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-10">해당하는 자료가 없습니다.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left px-5 py-3 text-gray-500 font-medium">문서명</th>
+                      <th className="text-left px-5 py-3 text-gray-500 font-medium">유형</th>
+                      <th className="text-left px-5 py-3 text-gray-500 font-medium">기준</th>
+                      <th className="text-left px-5 py-3 text-gray-500 font-medium">등록자</th>
+                      <th className="text-left px-5 py-3 text-gray-500 font-medium">가격</th>
+                      <th className="text-left px-5 py-3 text-gray-500 font-medium">상태</th>
+                      <th className="px-5 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredLicenses.map(d => (
+                      <tr key={d.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-4">
+                          <p className="font-semibold text-gray-900 text-sm line-clamp-1 max-w-xs">{d.title}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{d.pages}p · {d.equipment}</p>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${LICENSE_TYPE_COLORS[d.type] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {d.type}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">{d.standard}</span>
+                        </td>
+                        <td className="px-5 py-4 text-gray-600 text-sm">{d.submittedBy ?? '-'}</td>
+                        <td className="px-5 py-4 text-gray-800 font-medium text-sm">₩{(d.price / 10000).toFixed(0)}만</td>
+                        <td className="px-5 py-4">
+                          {d.verified
+                            ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">검증완료</span>
+                            : <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-100 text-orange-600">검증 대기</span>
+                          }
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex gap-1.5 justify-end">
+                            <button onClick={() => setLicenseDetail(d)}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 font-medium">상세</button>
+                            <button onClick={() => toggleLicenseVerify(d.id)}
+                              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${d.verified ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-blue-700 text-white hover:bg-blue-800'}`}>
+                              {d.verified ? '취소' : '검증'}
+                            </button>
+                            <button onClick={() => deleteL(d.id)}
+                              className="px-3 py-1.5 bg-red-50 text-red-500 text-xs rounded-lg hover:bg-red-100 font-medium">삭제</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
